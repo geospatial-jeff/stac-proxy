@@ -3,6 +3,8 @@ from typing import ClassVar
 from urllib.parse import urljoin
 
 from fastapi import Depends
+from stac_pydantic import Collection, Item, ItemCollection
+from stac_pydantic.collection import Extent, SpatialExtent, TimeInterval
 
 from .base import Datasource
 from ..utils.http import HttpClient
@@ -12,7 +14,24 @@ from ..utils.http import HttpClient
 class Landsat8(Datasource):
     base_url: ClassVar[str] = "https://earth-search.aws.element84.com"
 
-    async def item(self, itemId, http_client: HttpClient = Depends(HttpClient)):
+    async def collection(self, http_client: HttpClient = Depends(HttpClient)) -> Collection:
+        async with http_client.get(
+            urljoin(self.base_url, f"/collections/landsat-8-l1")
+        ) as resp:
+            resp_json = await resp.json()
+            resp_json['stac_version'] = "0.9.0"
+            resp_json['extent'] = Extent(
+                spatial=SpatialExtent(
+                    bbox=[resp_json['extent']['spatial']]
+                ),
+                temporal=TimeInterval(
+                    interval=[resp_json['extent']['temporal']]
+                )
+            )
+
+        return Collection.parse_obj(resp_json)
+
+    async def item(self, itemId, http_client: HttpClient = Depends(HttpClient)) -> Item:
         async with http_client.get(
             urljoin(self.base_url, f"/collections/landsat-8-l1/items/{itemId}")
         ) as resp:
@@ -20,9 +39,9 @@ class Landsat8(Datasource):
             resp_json["collection"] = resp_json["properties"].pop("collection")
             resp_json["stac_version"] = "0.9.0"
 
-        return resp_json
+        return Item.parse_obj(resp_json)
 
-    async def search(self, http_client: HttpClient = Depends(HttpClient)):
+    async def search(self, http_client: HttpClient = Depends(HttpClient)) -> ItemCollection:
         query_body = {"query": {"collection": {"eq": "landsat-8-l1"}}}
 
         async with http_client.post(
@@ -34,4 +53,4 @@ class Landsat8(Datasource):
             item["collection"] = item["properties"].pop("collection")
             item["stac_version"] = "0.9.0"
 
-        return resp_json
+        return ItemCollection.parse_obj(resp_json)
