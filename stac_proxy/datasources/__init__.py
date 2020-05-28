@@ -1,1 +1,1 @@
-from .landsat8 import Landsat8
+from .landsat import Landsat8
