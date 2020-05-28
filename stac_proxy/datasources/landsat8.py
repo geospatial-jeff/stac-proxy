@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import ClassVar
 from urllib.parse import urljoin
 
-from fastapi import Depends
 from stac_pydantic import Collection, Item, ItemCollection
 from stac_pydantic.collection import Extent, SpatialExtent, TimeInterval
 
@@ -11,11 +10,11 @@ from ..utils.http import HttpClient
 
 
 @dataclass
-class Landsat8(Datasource):
+class Landsat8(HttpClient, Datasource):
     base_url: ClassVar[str] = "https://earth-search.aws.element84.com"
 
-    async def collection(self, http_client: HttpClient = Depends(HttpClient)) -> Collection:
-        async with http_client.get(
+    async def collection(self) -> Collection:
+        async with self.get(
             urljoin(self.base_url, f"/collections/landsat-8-l1")
         ) as resp:
             resp_json = await resp.json()
@@ -31,8 +30,8 @@ class Landsat8(Datasource):
 
         return Collection.parse_obj(resp_json)
 
-    async def item(self, itemId, http_client: HttpClient = Depends(HttpClient)) -> Item:
-        async with http_client.get(
+    async def item(self, itemId) -> Item:
+        async with self.get(
             urljoin(self.base_url, f"/collections/landsat-8-l1/items/{itemId}")
         ) as resp:
             resp_json = await resp.json()
@@ -41,10 +40,10 @@ class Landsat8(Datasource):
 
         return Item.parse_obj(resp_json)
 
-    async def search(self, http_client: HttpClient = Depends(HttpClient)) -> ItemCollection:
+    async def search(self) -> ItemCollection:
         query_body = {"query": {"collection": {"eq": "landsat-8-l1"}}}
 
-        async with http_client.post(
+        async with self.post(
             urljoin(self.base_url, "/stac/search"), json=query_body
         ) as resp:
             resp_json = await resp.json()

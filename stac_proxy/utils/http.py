@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 
-_aiohttp_session = None
+import aiohttp
 
-
+@dataclass
 class HttpClient:
-    def __init__(self):
-        self.session = _aiohttp_session
+    session: aiohttp.ClientSession
 
     @asynccontextmanager
     async def get(self, url, *args, **kwargs):
